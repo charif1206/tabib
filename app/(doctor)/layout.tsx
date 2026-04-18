@@ -1,7 +1,7 @@
 import { ReactNode } from 'react';
-import { LogOut } from 'lucide-react';
 import { requireDoctorAccessForDashboard } from '@/lib/server/doctor-access';
 import DoctorSidebarNav from './components/doctor-sidebar-nav';
+import DoctorLogoutButton from './components/doctor-logout-button';
 
 export default async function DoctorLayout({ children }: { children: ReactNode }) {
   await requireDoctorAccessForDashboard();
@@ -19,10 +19,7 @@ export default async function DoctorLayout({ children }: { children: ReactNode }
         </div>
         <DoctorSidebarNav />
         <div className="p-4 border-t border-slate-800">
-          <button className="flex items-center gap-3 px-4 py-3 text-red-400 hover:bg-slate-800 rounded-lg w-full transition-colors">
-            <LogOut className="w-5 h-5" />
-            <span>تسجيل الخروج</span>
-          </button>
+          <DoctorLogoutButton />
         </div>
       </aside>
       

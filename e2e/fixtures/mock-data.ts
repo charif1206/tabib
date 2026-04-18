@@ -21,7 +21,13 @@ export const mockDoctorProfile = {
   specialty: 'Cardiology',
   bio: 'استشارية أمراض القلب.',
   location: { lat: 33.5731, lng: -7.5898 },
+  availableSlots: ['09:00', '10:00', '11:00', '14:00', '15:00'],
   todayAvailableSlots: ['09:00', '10:00', '11:00'],
+  weeklyAvailability: [
+    { date: '2026-04-18', slots: ['09:00', '10:00', '11:00'] },
+    { date: '2026-04-19', slots: ['14:00', '15:00'] },
+    { date: '2026-04-20', slots: ['09:00'] },
+  ],
 };
 
 export const mockDashboard = {

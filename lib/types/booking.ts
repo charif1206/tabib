@@ -20,11 +20,18 @@ export type DoctorListItem = {
     lat: number;
     lng: number;
   } | null;
+  distanceKm?: number | null;
   todayAvailableSlots: string[];
+};
+
+export type WeeklyAvailabilityDay = {
+  date: string;
+  slots: string[];
 };
 
 export type DoctorProfile = DoctorListItem & {
   availableSlots: string[];
+  weeklyAvailability: WeeklyAvailabilityDay[];
 };
 
 export type Appointment = {

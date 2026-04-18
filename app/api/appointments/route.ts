@@ -12,6 +12,30 @@ const APPOINTMENT_STATUSES = [
   'cancelled',
 ] as const;
 const BLOCKING_STATUSES = new Set(['pending', 'accepted', 'rescheduled']);
+const DEFAULT_SLOTS = ['09:00', '10:00', '11:00', '14:00', '15:00', '16:00'];
+
+function normalizeSlots(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return DEFAULT_SLOTS;
+  }
+
+  const slots = value.filter((item): item is string => typeof item === 'string' && item.trim().length > 0);
+  return slots.length ? slots : DEFAULT_SLOTS;
+}
+
+function getAllowedDateSet(days: number) {
+  const dates = new Set<string>();
+  const base = new Date();
+  base.setHours(0, 0, 0, 0);
+
+  for (let offset = 0; offset < days; offset += 1) {
+    const candidate = new Date(base);
+    candidate.setDate(base.getDate() + offset);
+    dates.add(candidate.toISOString().split('T')[0]);
+  }
+
+  return dates;
+}
 
 export async function GET() {
   try {
@@ -51,10 +75,21 @@ export async function POST(request: Request) {
 
     const normalizedDate = String(appointmentDate);
     const normalizedSlot = String(slot);
+    const allowedDates = getAllowedDateSet(7);
+
+    if (!allowedDates.has(normalizedDate)) {
+      return NextResponse.json({ error: 'يمكنك الحجز خلال 7 ايام القادمة فقط' }, { status: 400 });
+    }
 
     const doctorDoc = await adminDb.collection('doctors').doc(String(doctorId)).get();
     if (!doctorDoc.exists) {
       return NextResponse.json({ error: 'Doctor not found' }, { status: 404 });
+    }
+
+    const doctorData = doctorDoc.data()!;
+    const availableSlots = normalizeSlots(doctorData.availableSlots);
+    if (!availableSlots.includes(normalizedSlot)) {
+      return NextResponse.json({ error: 'Selected slot is not in doctor schedule' }, { status: 400 });
     }
 
     const existingAtSlot = await adminDb
@@ -74,7 +109,6 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Patient not found' }, { status: 404 });
     }
 
-    const doctorData = doctorDoc.data()!;
     const patientData = patientDoc.data()!;
     const status: (typeof APPOINTMENT_STATUSES)[number] = 'pending';
 

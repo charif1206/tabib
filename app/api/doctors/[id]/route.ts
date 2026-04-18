@@ -17,6 +17,20 @@ function getTodayIsoDate() {
   return new Date().toISOString().split('T')[0];
 }
 
+function getNextDaysIsoDates(days: number) {
+  const result: string[] = [];
+  const base = new Date();
+  base.setHours(0, 0, 0, 0);
+
+  for (let offset = 0; offset < days; offset += 1) {
+    const next = new Date(base);
+    next.setDate(base.getDate() + offset);
+    result.push(next.toISOString().split('T')[0]);
+  }
+
+  return result;
+}
+
 function normalizeLocation(data: Record<string, unknown>) {
   const raw = data.location;
   if (raw && typeof raw === 'object') {
@@ -39,13 +53,14 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   try {
     const { id } = await params;
     const today = getTodayIsoDate();
+    const weekDates = getNextDaysIsoDates(7);
+    const weekDateSet = new Set(weekDates);
 
     const [doctorDoc, appointmentsSnapshot] = await Promise.all([
       adminDb.collection('doctors').doc(id).get(),
       adminDb
         .collection('appointments')
         .where('doctorId', '==', id)
-        .where('appointmentDate', '==', today)
         .get(),
     ]);
 
@@ -55,16 +70,33 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
 
     const doctorData = doctorDoc.data() as Record<string, unknown>;
     const baseSlots = normalizeSlots(doctorData.availableSlots);
-    const bookedSlots = new Set<string>();
+    const bookedSlotsByDate = new Map<string, Set<string>>();
 
     appointmentsSnapshot.forEach((appointmentDoc) => {
       const appointment = appointmentDoc.data();
-      if (BLOCKING_STATUSES.has(appointment.status) && typeof appointment.slot === 'string') {
-        bookedSlots.add(appointment.slot);
+      const appointmentDate = appointment.appointmentDate;
+      const slot = appointment.slot;
+
+      if (!weekDateSet.has(String(appointmentDate))) {
+        return;
+      }
+
+      if (BLOCKING_STATUSES.has(appointment.status) && typeof slot === 'string') {
+        if (!bookedSlotsByDate.has(String(appointmentDate))) {
+          bookedSlotsByDate.set(String(appointmentDate), new Set());
+        }
+        bookedSlotsByDate.get(String(appointmentDate))!.add(slot);
       }
     });
 
-    const todayAvailableSlots = baseSlots.filter((slot) => !bookedSlots.has(slot));
+    const weeklyAvailability = weekDates.map((date) => {
+      const bookedSlots = bookedSlotsByDate.get(date) ?? new Set();
+      const slots = baseSlots.filter((slot) => !bookedSlots.has(slot));
+      return { date, slots };
+    });
+
+    const todayAvailability = weeklyAvailability.find((entry) => entry.date === today);
+    const todayAvailableSlots = todayAvailability?.slots ?? [];
 
     return NextResponse.json({
       doctor: {
@@ -76,6 +108,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
         location: normalizeLocation(doctorData),
         availableSlots: baseSlots,
         todayAvailableSlots,
+        weeklyAvailability,
       },
     });
   } catch (error) {

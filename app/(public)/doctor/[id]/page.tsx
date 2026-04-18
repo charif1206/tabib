@@ -8,8 +8,11 @@ import { useParams } from 'next/navigation';
 import { getDoctorById } from '@/services/doctorService';
 import { createAppointment } from '@/services/appointmentService';
 import { useBookingStore } from '@/lib/stores/bookingStore';
+import { distanceKm, FIXED_USER_LOCATION, isValidLocation } from '@/lib/location';
+import type { WeeklyAvailabilityDay } from '@/lib/types/booking';
 
 type BookingForm = {
+  appointmentDate: string;
   slot: string;
   note: string;
 };
@@ -24,7 +27,9 @@ export default function DoctorProfilePage() {
   const queryClient = useQueryClient();
 
   const selectedSlot = useBookingStore((state) => state.selectedSlotByDoctor[doctorId] ?? '');
+  const selectedDate = useBookingStore((state) => state.selectedDateByDoctor[doctorId] ?? '');
   const setSelectedSlot = useBookingStore((state) => state.setSelectedSlot);
+  const setSelectedDate = useBookingStore((state) => state.setSelectedDate);
   const bookingMessage = useBookingStore((state) => state.bookingMessage);
   const setBookingMessage = useBookingStore((state) => state.setBookingMessage);
   const clearBookingMessage = useBookingStore((state) => state.clearBookingMessage);
@@ -43,14 +48,51 @@ export default function DoctorProfilePage() {
     reset,
   } = useForm<BookingForm>({
     defaultValues: {
+      appointmentDate: selectedDate || getTodayIsoDate(),
       slot: selectedSlot,
       note: '',
     },
   });
 
   useEffect(() => {
+    setValue('appointmentDate', selectedDate || getTodayIsoDate());
     setValue('slot', selectedSlot);
-  }, [selectedSlot, setValue]);
+  }, [selectedDate, selectedSlot, setValue]);
+
+  const weeklyAvailability: WeeklyAvailabilityDay[] =
+    doctor?.weeklyAvailability && doctor.weeklyAvailability.length > 0
+      ? doctor.weeklyAvailability
+      : [{ date: getTodayIsoDate(), slots: doctor?.todayAvailableSlots ?? [] }];
+
+  useEffect(() => {
+    if (!doctor) {
+      return;
+    }
+
+    const firstAvailableDate = weeklyAvailability.find((entry) => entry.slots.length > 0)?.date ?? weeklyAvailability[0]?.date;
+    if (!firstAvailableDate) {
+      return;
+    }
+
+    if (!selectedDate || !weeklyAvailability.some((entry) => entry.date === selectedDate)) {
+      setSelectedDate(doctorId, firstAvailableDate);
+      setValue('appointmentDate', firstAvailableDate, { shouldValidate: true });
+    }
+  }, [doctor, doctorId, selectedDate, setSelectedDate, setValue, weeklyAvailability]);
+
+  const selectedDay =
+    weeklyAvailability.find((entry) => entry.date === selectedDate) ?? weeklyAvailability[0] ?? { date: '', slots: [] };
+
+  const slotsForSelectedDay = selectedDay.slots;
+
+  useEffect(() => {
+    if (!selectedSlot || slotsForSelectedDay.includes(selectedSlot)) {
+      return;
+    }
+
+    setSelectedSlot(doctorId, '');
+    setValue('slot', '', { shouldValidate: true });
+  }, [doctorId, selectedSlot, setSelectedSlot, setValue, slotsForSelectedDay]);
 
   const bookingMutation = useMutation({
     mutationFn: (values: BookingForm) =>
@@ -58,11 +100,11 @@ export default function DoctorProfilePage() {
         doctorId,
         slot: values.slot,
         note: values.note,
-        appointmentDate: getTodayIsoDate(),
+        appointmentDate: values.appointmentDate,
       }),
     onSuccess: () => {
       setBookingMessage('تم إرسال طلب الحجز بنجاح وحالته pending.');
-      reset({ slot: '', note: '' });
+      reset({ appointmentDate: selectedDay.date, slot: '', note: '' });
       setSelectedSlot(doctorId, '');
       queryClient.invalidateQueries({ queryKey: ['doctor', doctorId] });
       queryClient.invalidateQueries({ queryKey: ['doctors'] });
@@ -88,19 +130,50 @@ export default function DoctorProfilePage() {
           <h1 className="text-2xl font-bold text-gray-900 mb-2">{doctor.full_name}</h1>
           <p className="text-cyan-700 mb-3">{doctor.specialty}</p>
           <p className="text-gray-600 mb-6">{doctor.bio || 'لا يوجد نبذة متاحة.'}</p>
+          <p className="text-sm text-gray-500 mb-3">
+            {isValidLocation(doctor.location)
+              ? `يبعد عنك حوالي ${distanceKm(FIXED_USER_LOCATION, doctor.location).toFixed(1)} كم`
+              : 'المسافة غير متوفرة'}
+          </p>
 
           <div className="flex items-center gap-2 text-gray-700 mb-3">
             <Clock className="w-4 h-4" />
-            <span className="font-medium">المواعيد المتاحة اليوم</span>
+            <span className="font-medium">اختر اليوم ثم الوقت خلال الاسبوع</span>
           </div>
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div className="flex flex-wrap gap-2">
-              {doctor.todayAvailableSlots.length === 0 && (
+              {weeklyAvailability.map((entry) => {
+                const isActive = selectedDate === entry.date;
+                return (
+                  <button
+                    key={entry.date}
+                    type="button"
+                    data-testid={`slot-date-${entry.date}`}
+                    onClick={() => {
+                      setSelectedDate(doctorId, entry.date);
+                      setValue('appointmentDate', entry.date, { shouldValidate: true });
+                      if (!entry.slots.includes(selectedSlot)) {
+                        setSelectedSlot(doctorId, '');
+                        setValue('slot', '', { shouldValidate: true });
+                      }
+                    }}
+                    className={`px-3 py-2 rounded-lg border text-sm ${
+                      isActive ? 'bg-cyan-600 text-white border-cyan-600' : 'bg-white text-gray-700 border-gray-200'
+                    }`}
+                  >
+                    {entry.date} ({entry.slots.length})
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              {slotsForSelectedDay.length === 0 && (
                 <p className="text-sm text-gray-500">لا توجد مواعيد متاحة حالياً.</p>
               )}
 
-              {doctor.todayAvailableSlots.map((slot) => (
+              {slotsForSelectedDay.map((slot) => (
                 <button
                   key={slot}
                   type="button"
@@ -118,6 +191,9 @@ export default function DoctorProfilePage() {
               ))}
             </div>
 
+            <input type="hidden" {...register('appointmentDate', { required: 'يرجى اختيار يوم الموعد' })} />
+            {errors.appointmentDate && <p className="text-sm text-red-600">{errors.appointmentDate.message}</p>}
+
             <input type="hidden" {...register('slot', { required: 'يرجى اختيار وقت الموعد' })} />
             {errors.slot && <p className="text-sm text-red-600">{errors.slot.message}</p>}
 
@@ -131,7 +207,7 @@ export default function DoctorProfilePage() {
             <button
               type="submit"
               data-testid="submit-booking"
-              disabled={bookingMutation.isPending || doctor.todayAvailableSlots.length === 0}
+              disabled={bookingMutation.isPending || slotsForSelectedDay.length === 0}
               className="px-6 py-3 bg-cyan-600 text-white font-medium rounded-lg hover:bg-cyan-700 disabled:bg-gray-300"
             >
               {bookingMutation.isPending ? 'جاري الإرسال...' : 'إرسال طلب الحجز'}

@@ -8,19 +8,22 @@ import { useMemo, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { getDoctors } from '@/services/doctorService';
 import { useBookingStore } from '@/lib/stores/bookingStore';
+import { distanceKm, FIXED_USER_LOCATION, isValidLocation } from '@/lib/location';
+import type { DoctorListItem } from '@/lib/types/booking';
 
-const DoctorsLeafletMap = dynamic(() => import('./doctors-leaflet-map'), { ssr: false });
+type DoctorsLeafletMapProps = {
+  doctors: DoctorListItem[];
+  selectedLocation?: { lat: number; lng: number } | null;
+  userLocation?: { lat: number; lng: number };
+};
+
+const DoctorsLeafletMap = dynamic<DoctorsLeafletMapProps>(() => import('./doctors-leaflet-map'), { ssr: false });
 
 type SearchForm = {
   q: string;
 };
 
-function isValidLocation(location?: { lat: number; lng: number } | null): location is { lat: number; lng: number } {
-  if (!location) return false;
-  if (!Number.isFinite(location.lat) || !Number.isFinite(location.lng)) return false;
-  if (location.lat === 0 && location.lng === 0) return false;
-  return true;
-}
+type SortMode = 'default' | 'nearest' | 'most-available-today';
 
 export default function DoctorsPage() {
   const doctorSearch = useBookingStore((state) => state.doctorSearch);
@@ -41,13 +44,42 @@ export default function DoctorsPage() {
     setDoctorSearch(values.q);
   };
 
+  const [sortMode, setSortMode] = useState<SortMode>('default');
   const [selectedDoctorId, setSelectedDoctorId] = useState<string | null>(null);
 
+  const sortedDoctors = useMemo(() => {
+    const list = [...doctors];
+
+    if (sortMode === 'nearest') {
+      list.sort((a, b) => {
+        const aDistance = isValidLocation(a.location) ? distanceKm(FIXED_USER_LOCATION, a.location) : Number.POSITIVE_INFINITY;
+        const bDistance = isValidLocation(b.location) ? distanceKm(FIXED_USER_LOCATION, b.location) : Number.POSITIVE_INFINITY;
+        return aDistance - bDistance;
+      });
+      return list;
+    }
+
+    if (sortMode === 'most-available-today') {
+      list.sort((a, b) => {
+        const byAvailability = b.todayAvailableSlots.length - a.todayAvailableSlots.length;
+        if (byAvailability !== 0) {
+          return byAvailability;
+        }
+
+        const aDistance = isValidLocation(a.location) ? distanceKm(FIXED_USER_LOCATION, a.location) : Number.POSITIVE_INFINITY;
+        const bDistance = isValidLocation(b.location) ? distanceKm(FIXED_USER_LOCATION, b.location) : Number.POSITIVE_INFINITY;
+        return aDistance - bDistance;
+      });
+    }
+
+    return list;
+  }, [doctors, sortMode]);
+
   const selectedDoctor = useMemo(() => {
-    const fromState = doctors.find((doctor) => doctor.id === selectedDoctorId);
+    const fromState = sortedDoctors.find((doctor) => doctor.id === selectedDoctorId);
     if (fromState) return fromState;
-    return doctors.find((doctor) => isValidLocation(doctor.location)) ?? doctors[0] ?? null;
-  }, [doctors, selectedDoctorId]);
+    return sortedDoctors.find((doctor) => isValidLocation(doctor.location)) ?? sortedDoctors[0] ?? null;
+  }, [sortedDoctors, selectedDoctorId]);
 
   const selectedLocation = isValidLocation(selectedDoctor?.location) ? selectedDoctor.location : null;
 
@@ -66,11 +98,25 @@ export default function DoctorsPage() {
         <button type="submit" className="px-4 py-3 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 text-sm">
           بحث
         </button>
+        <select
+          value={sortMode}
+          onChange={(event) => setSortMode(event.target.value as SortMode)}
+          className="px-3 py-3 rounded-lg border border-gray-200 text-sm bg-white text-gray-700"
+          data-testid="doctors-sort"
+        >
+          <option value="default">ترتيب افتراضي</option>
+          <option value="nearest">الطبيب الاقرب</option>
+          <option value="most-available-today">المواعيد الاكثر اليوم</option>
+        </select>
       </form>
+
+      <p className="text-xs text-gray-500 mb-3 text-right">
+        الموقع الحالي (تجريبي): {FIXED_USER_LOCATION.lat}, {FIXED_USER_LOCATION.lng}
+      </p>
 
       <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-2 gap-4 pb-4">
         <div className="overflow-y-auto space-y-4 pb-16">
-          <p className="text-gray-500 text-sm">{doctors.length} طبيب</p>
+          <p className="text-gray-500 text-sm">{sortedDoctors.length} طبيب</p>
 
           {isLoading && <div className="bg-white border border-gray-100 rounded-xl p-4 text-sm text-gray-500">جاري التحميل...</div>}
           {isError && <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-700">فشل تحميل قائمة الأطباء.</div>}
@@ -79,8 +125,9 @@ export default function DoctorsPage() {
             <div className="bg-white border border-gray-100 rounded-xl p-4 text-sm text-gray-500">لا يوجد نتائج مطابقة.</div>
           )}
 
-          {doctors.map((doc) => {
+          {sortedDoctors.map((doc) => {
             const isSelected = selectedDoctor?.id === doc.id;
+            const doctorDistance = isValidLocation(doc.location) ? distanceKm(FIXED_USER_LOCATION, doc.location) : null;
             return (
               <div
                 key={doc.id}
@@ -119,6 +166,9 @@ export default function DoctorsPage() {
                     <span>لا توجد مواعيد متاحة اليوم</span>
                   )}
                 </div>
+                <div className="text-xs text-gray-500 mb-3">
+                  {doctorDistance !== null ? `يبعد عنك حوالي ${doctorDistance.toFixed(1)} كم` : 'المسافة غير متوفرة'}
+                </div>
                 <Link
                   href={`/doctor/${doc.id}`}
                   data-testid={`doctor-link-${doc.id}`}
@@ -142,7 +192,7 @@ export default function DoctorsPage() {
                 <p data-testid="selected-doctor-coords" className="text-xs text-gray-500 mb-2 text-right">
                   {selectedLocation.lat},{selectedLocation.lng}
                 </p>
-                <DoctorsLeafletMap doctors={doctors} selectedLocation={selectedLocation} />
+                <DoctorsLeafletMap doctors={sortedDoctors} selectedLocation={selectedLocation} userLocation={FIXED_USER_LOCATION} />
               </>
             ) : (
               <div className="h-[calc(100%-28px)] rounded-lg border border-dashed border-gray-200 flex items-center justify-center text-sm text-gray-500 text-center p-4">
