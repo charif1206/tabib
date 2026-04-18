@@ -16,6 +16,10 @@ export type DoctorListItem = {
   specialty: string;
   bio?: string;
   phone?: string;
+  location?: {
+    lat: number;
+    lng: number;
+  } | null;
   todayAvailableSlots: string[];
 };
 

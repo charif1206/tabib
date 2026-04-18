@@ -17,6 +17,24 @@ function getTodayIsoDate() {
   return new Date().toISOString().split('T')[0];
 }
 
+function normalizeLocation(data: Record<string, unknown>) {
+  const raw = data.location;
+  if (raw && typeof raw === 'object') {
+    const candidate = raw as { lat?: unknown; lng?: unknown };
+    if (typeof candidate.lat === 'number' && typeof candidate.lng === 'number') {
+      return { lat: candidate.lat, lng: candidate.lng };
+    }
+  }
+
+  const latitude = data.latitude;
+  const longitude = data.longitude;
+  if (typeof latitude === 'number' && typeof longitude === 'number') {
+    return { lat: latitude, lng: longitude };
+  }
+
+  return null;
+}
+
 export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
@@ -35,7 +53,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
       return NextResponse.json({ error: 'Doctor not found' }, { status: 404 });
     }
 
-    const doctorData = doctorDoc.data()!;
+    const doctorData = doctorDoc.data() as Record<string, unknown>;
     const baseSlots = normalizeSlots(doctorData.availableSlots);
     const bookedSlots = new Set<string>();
 
@@ -55,6 +73,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
         specialty: (doctorData.specialty ?? '') as string,
         bio: (doctorData.bio ?? '') as string,
         phone: (doctorData.phone ?? '') as string,
+        location: normalizeLocation(doctorData),
         availableSlots: baseSlots,
         todayAvailableSlots,
       },

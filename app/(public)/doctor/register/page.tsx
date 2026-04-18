@@ -7,6 +7,8 @@ import { useRouter } from 'next/navigation';
 export default function DoctorRegisterPage() {
   const router = useRouter();
   const [formData, setFormData] = useState({ full_name: '', phone: '', specialty: '', password: '' });
+  const [nationalIdFile, setNationalIdFile] = useState<File | null>(null);
+  const [graduationCertificateFile, setGraduationCertificateFile] = useState<File | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -21,16 +23,29 @@ export default function DoctorRegisterPage() {
       return;
     }
 
+    if (!nationalIdFile || !graduationCertificateFile) {
+      setError('يرجى رفع الهوية الوطنية وشهادة التخرج.');
+      setLoading(false);
+      return;
+    }
+
     try {
+      const payload = new FormData();
+      payload.set('full_name', formData.full_name);
+      payload.set('phone', formData.phone);
+      payload.set('specialty', formData.specialty);
+      payload.set('password', formData.password);
+      payload.set('national_id_file', nationalIdFile);
+      payload.set('graduation_certificate_file', graduationCertificateFile);
+
       const res = await fetch('/api/auth/doctor/register', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+        body: payload,
       });
       const data = await res.json();
       
       if (res.ok) {
-        router.push('/dashboard');
+        router.push(data.redirectTo || '/doctor/processing');
         router.refresh();
       } else {
         setError(data.error || 'Registration failed');
@@ -102,6 +117,26 @@ export default function DoctorRegisterPage() {
               value={formData.password}
               onChange={(e) => setFormData({...formData, password: e.target.value})}
              />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">الهوية الوطنية (PDF/JPG/PNG)</label>
+            <input
+              type="file"
+              required
+              accept=".pdf,image/png,image/jpeg,image/webp"
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-cyan-500 text-sm"
+              onChange={(event) => setNationalIdFile(event.target.files?.[0] ?? null)}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">شهادة التخرج (PDF/JPG/PNG)</label>
+            <input
+              type="file"
+              required
+              accept=".pdf,image/png,image/jpeg,image/webp"
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-cyan-500 text-sm"
+              onChange={(event) => setGraduationCertificateFile(event.target.files?.[0] ?? null)}
+            />
           </div>
           <button type="submit" disabled={loading} className="w-full bg-slate-900 hover:bg-slate-800 text-white font-medium py-2.5 rounded-lg transition-colors mt-6 disabled:opacity-50">
             {loading ? 'جاري التسجيل...' : 'إنشاء حساب طبيب'}

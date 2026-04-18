@@ -1,8 +1,11 @@
 import Link from 'next/link';
 import { ReactNode } from 'react';
 import { LayoutDashboard, Calendar, Users, LogOut, ClipboardList } from 'lucide-react';
+import { requireDoctorAccessForDashboard } from '@/lib/server/doctor-access';
 
-export default function DoctorLayout({ children }: { children: ReactNode }) {
+export default async function DoctorLayout({ children }: { children: ReactNode }) {
+  await requireDoctorAccessForDashboard();
+
   return (
     <div className="min-h-screen flex bg-gray-50 text-right" dir="rtl">
       {/* Sidebar */}

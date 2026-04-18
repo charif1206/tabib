@@ -6,10 +6,10 @@ Source of truth: yes
 ## Public/Shared
 - `GET /api/doctors`
   - Query: `q` (name/specialty search)
-  - Returns: doctor list + `todayAvailableSlots`
+  - Returns: doctor list + `todayAvailableSlots` + optional `location { lat, lng }`
 
 - `GET /api/doctors/:id`
-  - Returns: doctor profile + available slots
+  - Returns: doctor profile + available slots + optional `location { lat, lng }`
 
 ## Patient
 - `POST /api/appointments`

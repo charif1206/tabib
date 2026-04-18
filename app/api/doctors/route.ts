@@ -17,6 +17,53 @@ function getTodayIsoDate() {
   return new Date().toISOString().split('T')[0];
 }
 
+function isValidLocation(lat: unknown, lng: unknown) {
+  if (typeof lat !== 'number' || typeof lng !== 'number') return false;
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return false;
+  if (lat === 0 && lng === 0) return false;
+  return true;
+}
+
+function fakeLocationFromId(id: string) {
+  let hash = 0;
+  for (let index = 0; index < id.length; index += 1) {
+    hash = (hash * 31 + id.charCodeAt(index)) >>> 0;
+  }
+
+  const baseLat = 33.5731;
+  const baseLng = -7.5898;
+  const latOffset = ((hash % 200) - 100) / 1000;
+  const lngOffset = ((((hash >> 8) % 200) - 100) / 1000) * -1;
+
+  return {
+    lat: Number((baseLat + latOffset).toFixed(6)),
+    lng: Number((baseLng + lngOffset).toFixed(6)),
+  };
+}
+
+function normalizeLocation(data: Record<string, unknown>, doctorId: string) {
+  const raw = data.location;
+  if (raw && typeof raw === 'object') {
+    const candidate = raw as { lat?: unknown; lng?: unknown };
+    if (isValidLocation(candidate.lat, candidate.lng)) {
+      return { lat: candidate.lat, lng: candidate.lng };
+    }
+  }
+
+  const latitude = data.latitude;
+  const longitude = data.longitude;
+  if (isValidLocation(latitude, longitude)) {
+    return { lat: latitude, lng: longitude };
+  }
+
+  const useFakeMapData = process.env.NODE_ENV !== 'production' || process.env.ENABLE_FAKE_MAP_DATA === 'true';
+  if (useFakeMapData) {
+    return fakeLocationFromId(doctorId);
+  }
+
+  return null;
+}
+
 export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
@@ -51,7 +98,7 @@ export async function GET(request: Request) {
 
     const doctors = doctorsSnapshot.docs
       .map((doc) => {
-        const data = doc.data();
+        const data = doc.data() as Record<string, unknown>;
         const full_name = (data.full_name ?? '') as string;
         const specialty = (data.specialty ?? '') as string;
         const matches = !q || full_name.toLowerCase().includes(q) || specialty.toLowerCase().includes(q);
@@ -70,6 +117,7 @@ export async function GET(request: Request) {
           specialty,
           bio: (data.bio ?? '') as string,
           phone: (data.phone ?? '') as string,
+          location: normalizeLocation(data, doc.id),
           todayAvailableSlots,
         };
       })

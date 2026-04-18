@@ -1,17 +1,21 @@
 import { NextResponse } from 'next/server';
-import { getSession } from '@/lib/auth';
+import { canAccessDoctorDashboard, getDoctorAccessState } from '@/lib/server/doctor-access';
 import { adminDb } from '@/lib/firebase-admin';
 
 export async function GET() {
   try {
-    const session = await getSession();
-    if (!session || session.role !== 'doctor') {
+    const state = await getDoctorAccessState();
+    if (!state) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    if (!canAccessDoctorDashboard(state)) {
+      return NextResponse.json({ error: 'Doctor access is restricted' }, { status: 403 });
     }
 
     const snapshot = await adminDb
       .collection('appointments')
-      .where('doctorId', '==', session.id)
+      .where('doctorId', '==', state.id)
       .get();
 
     const appointments = snapshot.docs.map((doc) => ({
