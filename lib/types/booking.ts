@@ -32,9 +32,14 @@ export type Appointment = {
   specialty?: string;
   appointmentDate: string;
   slot: string;
+  requested_time?: string;
+  confirmed_time?: string;
+  new_time?: string | null;
+  rescheduledSlot?: string | null;
   status: AppointmentStatus;
   note?: string;
   createdAt: string;
+  updatedAt?: string;
 };
 
 export type MeResponse = {

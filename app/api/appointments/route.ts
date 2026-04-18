@@ -86,6 +86,7 @@ export async function POST(request: Request) {
       patientName: (patientData.full_name ?? '') as string,
       appointmentDate: normalizedDate,
       slot: normalizedSlot,
+      requested_time: normalizedSlot,
       note: typeof note === 'string' ? note.trim() : '',
       status,
       createdAt: new Date().toISOString(),
@@ -108,3 +109,4 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
+
