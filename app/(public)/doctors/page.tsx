@@ -1,6 +1,6 @@
 'use client';
 
-import { Search, Clock } from 'lucide-react';
+import { Search, Clock, Star, Zap } from 'lucide-react';
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
@@ -10,6 +10,7 @@ import { getDoctors } from '@/services/doctorService';
 import { useBookingStore } from '@/lib/stores/bookingStore';
 import { distanceKm, FIXED_USER_LOCATION, isValidLocation } from '@/lib/location';
 import type { DoctorListItem } from '@/lib/types/booking';
+import QuickBookingModal from './quick-booking-modal';
 
 type DoctorsLeafletMapProps = {
   doctors: DoctorListItem[];
@@ -23,7 +24,7 @@ type SearchForm = {
   q: string;
 };
 
-type SortMode = 'default' | 'nearest' | 'most-available-today';
+type SortMode = 'default' | 'nearest' | 'most-available-today' | 'highest-rating';
 
 export default function DoctorsPage() {
   const doctorSearch = useBookingStore((state) => state.doctorSearch);
@@ -46,6 +47,7 @@ export default function DoctorsPage() {
 
   const [sortMode, setSortMode] = useState<SortMode>('default');
   const [selectedDoctorId, setSelectedDoctorId] = useState<string | null>(null);
+  const [isQuickBookingOpen, setIsQuickBookingOpen] = useState(false);
 
   const sortedDoctors = useMemo(() => {
     const list = [...doctors];
@@ -64,6 +66,21 @@ export default function DoctorsPage() {
         const byAvailability = b.todayAvailableSlots.length - a.todayAvailableSlots.length;
         if (byAvailability !== 0) {
           return byAvailability;
+        }
+
+        const aDistance = isValidLocation(a.location) ? distanceKm(FIXED_USER_LOCATION, a.location) : Number.POSITIVE_INFINITY;
+        const bDistance = isValidLocation(b.location) ? distanceKm(FIXED_USER_LOCATION, b.location) : Number.POSITIVE_INFINITY;
+        return aDistance - bDistance;
+      });
+    }
+
+    if (sortMode === 'highest-rating') {
+      list.sort((a, b) => {
+        const aRating = typeof a.rating === 'number' ? a.rating : Number.NEGATIVE_INFINITY;
+        const bRating = typeof b.rating === 'number' ? b.rating : Number.NEGATIVE_INFINITY;
+        const byRating = bRating - aRating;
+        if (byRating !== 0) {
+          return byRating;
         }
 
         const aDistance = isValidLocation(a.location) ? distanceKm(FIXED_USER_LOCATION, a.location) : Number.POSITIVE_INFINITY;
@@ -98,6 +115,15 @@ export default function DoctorsPage() {
         <button type="submit" className="px-4 py-3 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 text-sm">
           بحث
         </button>
+        <button
+          type="button"
+          onClick={() => setIsQuickBookingOpen(true)}
+          data-testid="quick-booking-button"
+          className="inline-flex items-center gap-2 px-4 py-3 bg-amber-500 text-white rounded-lg hover:bg-amber-600 text-sm font-medium transition-colors"
+        >
+          <Zap className="w-4 h-4" />
+          <span className="hidden sm:inline">احجز بضغطة زر</span>
+        </button>
         <select
           value={sortMode}
           onChange={(event) => setSortMode(event.target.value as SortMode)}
@@ -105,6 +131,7 @@ export default function DoctorsPage() {
           data-testid="doctors-sort"
         >
           <option value="default">ترتيب افتراضي</option>
+          <option value="highest-rating">الأعلى تقييما</option>
           <option value="nearest">الطبيب الاقرب</option>
           <option value="most-available-today">المواعيد الاكثر اليوم</option>
         </select>
@@ -169,15 +196,13 @@ export default function DoctorsPage() {
                 <div className="text-xs text-gray-500 mb-3">
                   {doctorDistance !== null ? `يبعد عنك حوالي ${doctorDistance.toFixed(1)} كم` : 'المسافة غير متوفرة'}
                 </div>
+                <div className="flex items-center gap-1 text-xs text-amber-600 mb-3">
+                  <Star className="w-4 h-4 fill-amber-500 text-amber-500" />
+                  <span data-testid={`doctor-rating-${doc.id}`}>
+                    {typeof doc.rating === 'number' ? `التقييم ${doc.rating.toFixed(1)} / 5` : 'بدون تقييم'}
+                  </span>
+                </div>
                 <div className="flex items-center gap-2">
-                  <Link
-                    href={`/doctor/${doc.id}`}
-                    data-testid={`doctor-profile-link-${doc.id}`}
-                    onClick={(event) => event.stopPropagation()}
-                    className="inline-block bg-gray-100 text-gray-700 px-4 py-2 rounded-lg text-sm hover:bg-gray-200"
-                  >
-                    الذهاب إلى الملف
-                  </Link>
                   <Link
                     href={`/doctor/${doc.id}`}
                     data-testid={`doctor-link-${doc.id}`}
@@ -212,6 +237,8 @@ export default function DoctorsPage() {
           </div>
         </div>
       </div>
+
+      <QuickBookingModal isOpen={isQuickBookingOpen} onCloseAction={() => setIsQuickBookingOpen(false)} doctors={doctors} />
     </div>
   );
 }

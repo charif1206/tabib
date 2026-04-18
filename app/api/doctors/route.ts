@@ -64,6 +64,23 @@ function normalizeLocation(data: Record<string, unknown>, doctorId: string) {
   return null;
 }
 
+function normalizeRating(value: unknown) {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    return null;
+  }
+
+  const bounded = Math.min(5, Math.max(0, value));
+  return Number(bounded.toFixed(1));
+}
+
+function normalizeRatingCount(value: unknown) {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) {
+    return 0;
+  }
+
+  return Math.floor(value);
+}
+
 export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
@@ -115,6 +132,8 @@ export async function GET(request: Request) {
           id: doc.id,
           full_name,
           specialty,
+          rating: normalizeRating(data.rating),
+          ratingCount: normalizeRatingCount(data.ratingCount),
           bio: (data.bio ?? '') as string,
           phone: (data.phone ?? '') as string,
           location: normalizeLocation(data, doc.id),

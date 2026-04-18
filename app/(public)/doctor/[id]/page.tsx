@@ -7,9 +7,11 @@ import { useForm } from 'react-hook-form';
 import { useParams } from 'next/navigation';
 import { getDoctorById } from '@/services/doctorService';
 import { createAppointment } from '@/services/appointmentService';
+import { getMe } from '@/services/meService';
 import { useBookingStore } from '@/lib/stores/bookingStore';
 import { distanceKm, FIXED_USER_LOCATION, isValidLocation } from '@/lib/location';
 import type { WeeklyAvailabilityDay } from '@/lib/types/booking';
+import RatingModal from './rating-modal';
 
 type BookingForm = {
   appointmentDate: string;
@@ -39,6 +41,16 @@ export default function DoctorProfilePage() {
     queryFn: () => getDoctorById(doctorId),
     enabled: Boolean(doctorId),
   });
+
+  const { data: meData } = useQuery({
+    queryKey: ['me'],
+    queryFn: getMe,
+  });
+
+  // Find completed appointment with this doctor for rating
+  const completedAppointmentWithDoctor = meData?.appointments.find(
+    (apt) => apt.doctorId === doctorId && apt.status === 'completed' && !apt.patientRating,
+  );
 
   const {
     register,
@@ -125,11 +137,24 @@ export default function DoctorProfilePage() {
       {isLoading && <div className="bg-white border border-gray-100 rounded-xl p-6 text-gray-500">جاري تحميل بيانات الطبيب...</div>}
       {isError && <div className="bg-red-50 border border-red-200 rounded-xl p-6 text-red-700">تعذر تحميل صفحة الطبيب.</div>}
 
-      {doctor && (
-        <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm text-right">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">{doctor.full_name}</h1>
-          <p className="text-cyan-700 mb-3">{doctor.specialty}</p>
-          <p className="text-gray-600 mb-6">{doctor.bio || 'لا يوجد نبذة متاحة.'}</p>
+       {doctor && (
+         <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm text-right">
+           <div className="flex items-start justify-between gap-4 mb-4">
+             <div className="flex-1">
+               <h1 className="text-2xl font-bold text-gray-900 mb-2">{doctor.full_name}</h1>
+               <p className="text-cyan-700 mb-3">{doctor.specialty}</p>
+               {typeof doctor.rating === 'number' && (
+                 <p className="text-sm text-amber-700 mb-2">⭐ {doctor.rating.toFixed(1)} / 5 ({doctor.ratingCount || 0} تقييم)</p>
+               )}
+             </div>
+              <RatingModal
+                appointmentId={completedAppointmentWithDoctor?.id}
+                doctorName={doctor.full_name}
+                onSuccessAction={() => queryClient.invalidateQueries({ queryKey: ['me'] })}
+              />
+           </div>
+
+           <p className="text-gray-600 mb-6">{doctor.bio || 'لا يوجد نبذة متاحة.'}</p>
           <p className="text-sm text-gray-500 mb-3">
             {isValidLocation(doctor.location)
               ? `يبعد عنك حوالي ${distanceKm(FIXED_USER_LOCATION, doctor.location).toFixed(1)} كم`

@@ -16,6 +16,20 @@ test.describe('Doctors map interactions', () => {
     await expect(page.getByTestId('selected-doctor-name')).toContainText('د. عمر علي');
     await expect(page.getByTestId('selected-doctor-coords')).toHaveText('34.0209,-6.8416');
   });
+
+  test('shows ratings and sorts doctors by highest rating', async ({ page }) => {
+    await mockCoreApi(page);
+
+    await page.goto('/doctors');
+
+    await expect(page.getByTestId('doctor-rating-doc-1')).toContainText('4.8');
+    await expect(page.getByTestId('doctor-rating-doc-2')).toContainText('3.9');
+
+    await page.getByTestId('doctors-sort').selectOption('highest-rating');
+
+    const firstCard = page.locator('[data-testid^="doctor-card-"]').first();
+    await expect(firstCard).toHaveAttribute('data-testid', 'doctor-card-doc-1');
+  });
 });
 
 
