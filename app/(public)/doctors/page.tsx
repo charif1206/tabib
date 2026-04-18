@@ -169,14 +169,24 @@ export default function DoctorsPage() {
                 <div className="text-xs text-gray-500 mb-3">
                   {doctorDistance !== null ? `يبعد عنك حوالي ${doctorDistance.toFixed(1)} كم` : 'المسافة غير متوفرة'}
                 </div>
-                <Link
-                  href={`/doctor/${doc.id}`}
-                  data-testid={`doctor-link-${doc.id}`}
-                  onClick={(event) => event.stopPropagation()}
-                  className="inline-block bg-cyan-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-cyan-700"
-                >
-                  عرض الملف والحجز
-                </Link>
+                <div className="flex items-center gap-2">
+                  <Link
+                    href={`/doctor/${doc.id}`}
+                    data-testid={`doctor-profile-link-${doc.id}`}
+                    onClick={(event) => event.stopPropagation()}
+                    className="inline-block bg-gray-100 text-gray-700 px-4 py-2 rounded-lg text-sm hover:bg-gray-200"
+                  >
+                    الذهاب إلى الملف
+                  </Link>
+                  <Link
+                    href={`/doctor/${doc.id}`}
+                    data-testid={`doctor-link-${doc.id}`}
+                    onClick={(event) => event.stopPropagation()}
+                    className="inline-block bg-cyan-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-cyan-700"
+                  >
+                    عرض الملف والحجز
+                  </Link>
+                </div>
               </div>
             );
           })}

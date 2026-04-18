@@ -3,6 +3,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { LogOut } from 'lucide-react';
 import { getMe } from '@/services/meService';
 
 const STATUS_LABELS: Record<string, string> = {
@@ -16,9 +18,26 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 export default function PatientProfilePage() {
+  const router = useRouter();
   const queryClient = useQueryClient();
   const [selectedAppointmentId, setSelectedAppointmentId] = useState<string | null>(null);
   const [selectedAction, setSelectedAction] = useState<'cancel' | 'accept_reschedule' | 'reject_reschedule' | null>(null);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  async function handleLogout() {
+    if (isLoggingOut) {
+      return;
+    }
+
+    setIsLoggingOut(true);
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' });
+    } finally {
+      router.replace('/login');
+      router.refresh();
+      setIsLoggingOut(false);
+    }
+  }
 
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ['me'],
@@ -55,7 +74,19 @@ export default function PatientProfilePage() {
   return (
     <div className="space-y-4">
       <div className="bg-white rounded-xl border border-gray-100 p-6">
-        <h2 className="text-xl font-bold text-gray-900 mb-4">المعلومات الشخصية</h2>
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <button
+            type="button"
+            onClick={handleLogout}
+            disabled={isLoggingOut}
+            data-testid="patient-logout-button"
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 disabled:opacity-60"
+          >
+            <LogOut className="w-4 h-4" />
+            <span>{isLoggingOut ? 'جاري تسجيل الخروج...' : 'تسجيل الخروج'}</span>
+          </button>
+          <h2 className="text-xl font-bold text-gray-900">المعلومات الشخصية</h2>
+        </div>
 
         {isLoading && <p className="text-sm text-gray-500">جاري التحميل...</p>}
         {isError && <p className="text-sm text-red-700">{(error as Error).message || 'تعذر تحميل الملف الشخصي'}</p>}
