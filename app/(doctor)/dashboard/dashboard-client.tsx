@@ -5,14 +5,28 @@ import { useState } from 'react';
 import { Clock } from 'lucide-react';
 
 async function getDoctorDashboard() {
-  const res = await fetch('/api/doctor/dashboard', { cache: 'no-store' });
-  if (!res.ok) throw new Error('Failed to fetch dashboard');
+  const res = await fetch('/api/doctor/dashboard', { cache: 'no-store', credentials: 'include' });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({ error: '' }));
+    if (res.status === 401 && typeof window !== 'undefined') {
+      window.location.href = '/doctor/login';
+      throw new Error('انتهت الجلسة. الرجاء تسجيل الدخول مرة اخرى.');
+    }
+    throw new Error(data.error || 'Failed to fetch dashboard');
+  }
   return res.json();
 }
 
 async function getDoctorAppointments(type: 'requests' | 'bookings') {
-  const res = await fetch(`/api/doctor/appointments?type=${type}`, { cache: 'no-store' });
-  if (!res.ok) throw new Error(`Failed to fetch ${type}`);
+  const res = await fetch(`/api/doctor/appointments?type=${type}`, { cache: 'no-store', credentials: 'include' });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({ error: '' }));
+    if (res.status === 401 && typeof window !== 'undefined') {
+      window.location.href = '/doctor/login';
+      throw new Error('انتهت الجلسة. الرجاء تسجيل الدخول مرة اخرى.');
+    }
+    throw new Error(data.error || `Failed to fetch ${type}`);
+  }
   return res.json();
 }
 
@@ -36,14 +50,26 @@ export default function DoctorDashboardClient() {
   const [rescheduleSlot, setRescheduleSlot] = useState('');
   const [actionType, setActionType] = useState<'accept' | 'reject' | 'reschedule' | null>(null);
 
-  const { data: dashboard, isLoading: dashboardLoading } = useQuery({
+  const {
+    data: dashboard,
+    isLoading: dashboardLoading,
+    isError: dashboardError,
+    error: dashboardErrorMessage,
+  } = useQuery({
     queryKey: ['doctorDashboard'],
     queryFn: getDoctorDashboard,
+    retry: false,
   });
 
-  const { data: appointments, isLoading: appointmentsLoading } = useQuery({
+  const {
+    data: appointments,
+    isLoading: appointmentsLoading,
+    isError: appointmentsError,
+    error: appointmentsErrorMessage,
+  } = useQuery({
     queryKey: ['doctorAppointments', activeTab],
     queryFn: () => getDoctorAppointments(activeTab),
+    retry: false,
   });
 
   const updateMutation = useMutation({
@@ -69,6 +95,9 @@ export default function DoctorDashboardClient() {
   };
 
   if (dashboardLoading) return <div className="p-6 text-gray-500">جاري التحميل...</div>;
+  if (dashboardError) {
+    return <div className="p-6 text-red-700">{(dashboardErrorMessage as Error).message}</div>;
+  }
 
   const availableSlots = ['09:00', '10:00', '11:00', '14:00', '15:00', '16:00'];
 
@@ -78,11 +107,15 @@ export default function DoctorDashboardClient() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="bg-white border border-gray-100 rounded-lg p-4 text-right">
           <p className="text-gray-600 text-sm">طلبات pending</p>
-          <p className="text-3xl font-bold text-cyan-600">{dashboard?.totalRequests || 0}</p>
+          <p data-testid="dashboard-total-requests" className="text-3xl font-bold text-cyan-600">
+            {dashboard?.totalRequests || 0}
+          </p>
         </div>
         <div className="bg-white border border-gray-100 rounded-lg p-4 text-right">
           <p className="text-gray-600 text-sm">حجوزات مؤكدة</p>
-          <p className="text-3xl font-bold text-emerald-600">{dashboard?.totalBookings || 0}</p>
+          <p data-testid="dashboard-total-bookings" className="text-3xl font-bold text-emerald-600">
+            {dashboard?.totalBookings || 0}
+          </p>
         </div>
       </div>
 
@@ -91,6 +124,7 @@ export default function DoctorDashboardClient() {
         <div className="flex gap-0 border-b border-gray-100">
           <button
             onClick={() => setActiveTab('requests')}
+            data-testid="dashboard-tab-requests"
             className={`flex-1 py-3 text-sm font-medium text-center border-b-2 ${
               activeTab === 'requests'
                 ? 'border-cyan-600 text-cyan-700'
@@ -101,6 +135,7 @@ export default function DoctorDashboardClient() {
           </button>
           <button
             onClick={() => setActiveTab('bookings')}
+            data-testid="dashboard-tab-bookings"
             className={`flex-1 py-3 text-sm font-medium text-center border-b-2 ${
               activeTab === 'bookings'
                 ? 'border-cyan-600 text-cyan-700'
@@ -113,6 +148,10 @@ export default function DoctorDashboardClient() {
 
         {appointmentsLoading ? (
           <div className="p-6 text-gray-500">جاري التحميل...</div>
+        ) : appointmentsError ? (
+          <div data-testid="dashboard-appointments-error" className="p-6 text-red-700">
+            {(appointmentsErrorMessage as Error).message}
+          </div>
         ) : appointments?.appointments?.length === 0 ? (
           <div className="p-6 text-gray-500">لا توجد نتائج</div>
         ) : (
@@ -120,11 +159,13 @@ export default function DoctorDashboardClient() {
             {appointments?.appointments?.map((apt: any) => (
               <div
                 key={apt.id}
+                data-testid={`appointment-card-${apt.id}`}
                 className="border border-gray-200 rounded-lg p-4 text-right hover:shadow-md transition-shadow"
               >
                 <div className="flex justify-between items-start mb-2">
                   <button
                     onClick={() => setSelectedAppointment(apt.id)}
+                    data-testid={`appointment-action-${apt.id}`}
                     className="text-cyan-600 text-sm font-medium hover:underline"
                   >
                     إجراء
@@ -158,7 +199,7 @@ export default function DoctorDashboardClient() {
       {/* Action Modal */}
       {selectedAppointment && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-sm w-full mx-4 text-right">
+          <div data-testid="appointment-action-modal" className="bg-white rounded-lg p-6 max-w-sm w-full mx-4 text-right">
             <h2 className="text-lg font-bold text-gray-900 mb-4">إجراء على الموعد</h2>
 
             <div className="space-y-3 mb-6">
@@ -166,6 +207,7 @@ export default function DoctorDashboardClient() {
                 <>
                   <button
                     onClick={() => setActionType('accept')}
+                    data-testid="action-accept"
                     className={`w-full py-2 px-4 rounded-lg border text-sm font-medium ${
                       actionType === 'accept'
                         ? 'bg-emerald-100 border-emerald-300 text-emerald-700'
@@ -176,6 +218,7 @@ export default function DoctorDashboardClient() {
                   </button>
                   <button
                     onClick={() => setActionType('reject')}
+                    data-testid="action-reject"
                     className={`w-full py-2 px-4 rounded-lg border text-sm font-medium ${
                       actionType === 'reject'
                         ? 'bg-red-100 border-red-300 text-red-700'
@@ -186,6 +229,7 @@ export default function DoctorDashboardClient() {
                   </button>
                   <button
                     onClick={() => setActionType('reschedule')}
+                    data-testid="action-reschedule"
                     className={`w-full py-2 px-4 rounded-lg border text-sm font-medium ${
                       actionType === 'reschedule'
                         ? 'bg-blue-100 border-blue-300 text-blue-700'
@@ -204,6 +248,7 @@ export default function DoctorDashboardClient() {
                 <select
                   value={rescheduleSlot}
                   onChange={(e) => setRescheduleSlot(e.target.value)}
+                  data-testid="reschedule-slot-select"
                   className="w-full border border-gray-200 rounded-lg p-2 text-sm"
                 >
                   <option value="">اختر وقت</option>
@@ -229,6 +274,7 @@ export default function DoctorDashboardClient() {
               </button>
               <button
                 onClick={handleAction}
+                data-testid="confirm-action"
                 disabled={updateMutation.isPending || (actionType === 'reschedule' && !rescheduleSlot)}
                 className="flex-1 py-2 px-4 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 disabled:bg-gray-300 text-sm font-medium"
               >

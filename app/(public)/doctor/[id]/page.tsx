@@ -108,6 +108,7 @@ export default function DoctorProfilePage() {
                     setSelectedSlot(doctorId, slot);
                     setValue('slot', slot, { shouldValidate: true });
                   }}
+                  data-testid={`slot-${slot}`}
                   className={`px-3 py-2 rounded-lg border text-sm ${
                     selectedSlot === slot ? 'bg-cyan-600 text-white border-cyan-600' : 'bg-white text-gray-700 border-gray-200'
                   }`}
@@ -129,6 +130,7 @@ export default function DoctorProfilePage() {
 
             <button
               type="submit"
+              data-testid="submit-booking"
               disabled={bookingMutation.isPending || doctor.todayAvailableSlots.length === 0}
               className="px-6 py-3 bg-cyan-600 text-white font-medium rounded-lg hover:bg-cyan-700 disabled:bg-gray-300"
             >
@@ -137,7 +139,12 @@ export default function DoctorProfilePage() {
           </form>
 
           {bookingMessage && (
-            <p className={`mt-4 text-sm ${bookingMessage.includes('نجاح') ? 'text-emerald-700' : 'text-red-700'}`}>{bookingMessage}</p>
+            <p
+              data-testid="booking-message"
+              className={`mt-4 text-sm ${bookingMessage.includes('نجاح') ? 'text-emerald-700' : 'text-red-700'}`}
+            >
+              {bookingMessage}
+            </p>
           )}
         </div>
       )}

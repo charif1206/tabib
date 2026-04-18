@@ -7,9 +7,14 @@ type CalendarResponse = {
 };
 
 async function getDoctorCalendar(): Promise<CalendarResponse> {
-  const response = await fetch('/api/doctor/calendar', { cache: 'no-store' });
+  const response = await fetch('/api/doctor/calendar', { cache: 'no-store', credentials: 'include' });
   if (!response.ok) {
-    throw new Error('تعذر تحميل التقويم');
+    const data = await response.json().catch(() => ({ error: '' }));
+    if (response.status === 401 && typeof window !== 'undefined') {
+      window.location.href = '/doctor/login';
+      throw new Error('انتهت الجلسة. الرجاء تسجيل الدخول مرة اخرى.');
+    }
+    throw new Error(data.error || 'تعذر تحميل التقويم');
   }
   return response.json() as Promise<CalendarResponse>;
 }
@@ -18,6 +23,7 @@ export default function CalendarPage() {
   const { data, isLoading, isError } = useQuery({
     queryKey: ['doctorCalendar'],
     queryFn: getDoctorCalendar,
+    retry: false,
   });
 
   const days = data ? Object.keys(data.weekSchedule) : [];
@@ -28,13 +34,13 @@ export default function CalendarPage() {
       <h2 className="text-lg font-bold text-gray-800 mb-6">جدول المواعيد الأسبوعي</h2>
 
       {isLoading && <p className="text-sm text-gray-500">جاري التحميل...</p>}
-      {isError && <p className="text-sm text-red-700">تعذر تحميل بيانات التقويم.</p>}
+      {isError && <p data-testid="doctor-calendar-error" className="text-sm text-red-700">تعذر تحميل بيانات التقويم.</p>}
 
       {!isLoading && !isError && days.length === 0 && <p className="text-sm text-gray-500">لا توجد بيانات.</p>}
 
       {!isLoading && !isError && days.length > 0 && (
         <div className="overflow-auto">
-          <table className="w-full border-collapse min-w-[720px]">
+          <table data-testid="doctor-calendar-table" className="w-full border-collapse min-w-[720px]">
             <thead>
               <tr>
                 <th className="border border-gray-200 bg-gray-50 p-2 text-sm font-semibold">الوقت</th>

@@ -58,7 +58,7 @@ export default function DoctorsPage() {
         )}
 
         {doctors.map((doc) => (
-          <div key={doc.id} className="bg-white border border-gray-100 rounded-xl p-4 text-right">
+          <div key={doc.id} data-testid={`doctor-card-${doc.id}`} className="bg-white border border-gray-100 rounded-xl p-4 text-right">
             <h3 className="font-bold text-gray-900">{doc.full_name}</h3>
             <p className="text-gray-600 text-sm mb-3">{doc.specialty}</p>
             <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500 mb-3">
@@ -73,7 +73,11 @@ export default function DoctorsPage() {
                 <span>لا توجد مواعيد متاحة اليوم</span>
               )}
             </div>
-            <Link href={`/doctor/${doc.id}`} className="inline-block bg-cyan-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-cyan-700">
+            <Link
+              href={`/doctor/${doc.id}`}
+              data-testid={`doctor-link-${doc.id}`}
+              className="inline-block bg-cyan-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-cyan-700"
+            >
               عرض الملف والحجز
             </Link>
           </div>

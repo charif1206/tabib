@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { ReactNode } from 'react';
-import { LayoutDashboard, Calendar, Users, Settings, LogOut, ClipboardList } from 'lucide-react';
+import { LayoutDashboard, Calendar, Users, LogOut, ClipboardList } from 'lucide-react';
 
 export default function DoctorLayout({ children }: { children: ReactNode }) {
   return (
@@ -15,19 +15,35 @@ export default function DoctorLayout({ children }: { children: ReactNode }) {
           <p className="text-slate-400 text-sm mt-1">د. محمد صالح</p>
         </div>
         <nav className="flex-1 p-4 space-y-1">
-          <Link href="/dashboard" className="flex items-center gap-3 px-4 py-3 bg-slate-800 rounded-lg text-cyan-400">
+          <Link
+            href="/dashboard"
+            data-testid="doctor-nav-dashboard"
+            className="flex items-center gap-3 px-4 py-3 bg-slate-800 rounded-lg text-cyan-400"
+          >
             <LayoutDashboard className="w-5 h-5" />
             <span>لوحة التحكم</span>
           </Link>
-          <Link href="/requests" className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-800 rounded-lg transition-colors">
+          <Link
+            href="/requests"
+            data-testid="doctor-nav-requests"
+            className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-800 rounded-lg transition-colors"
+          >
             <ClipboardList className="w-5 h-5" />
             <span>الطلبات الجديدة</span>
           </Link>
-          <Link href="/calendar" className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-800 rounded-lg transition-colors">
+          <Link
+            href="/calendar"
+            data-testid="doctor-nav-calendar"
+            className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-800 rounded-lg transition-colors"
+          >
             <Calendar className="w-5 h-5" />
             <span>جدول المواعيد</span>
           </Link>
-          <Link href="/bookings" className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-800 rounded-lg transition-colors">
+          <Link
+            href="/bookings"
+            data-testid="doctor-nav-bookings"
+            className="flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-800 rounded-lg transition-colors"
+          >
             <Users className="w-5 h-5" />
             <span>المرضى</span>
           </Link>

@@ -1,0 +1,25 @@
+# Modules
+
+Last verified: 2026-04-18
+Source of truth: yes
+
+## Auth module
+- Files: `lib/auth.ts`, `app/api/auth/*`
+- Responsibility: login/register/logout/session
+
+## Doctor discovery module
+- Files: `app/api/doctors/*`, `app/(public)/doctors/*`, `app/(public)/doctor/[id]/*`
+- Responsibility: search doctors + show available slots
+
+## Booking module
+- Files: `app/api/appointments/*`, `services/appointmentService.ts`
+- Responsibility: create/update patient appointments
+
+## Doctor operations module
+- Files: `app/api/doctor/*`, `app/(doctor)/*`
+- Responsibility: dashboard, requests/bookings handling, calendar
+
+## Patient profile module
+- Files: `app/api/me/route.ts`, `app/(patient)/profile/page.tsx`
+- Responsibility: patient account + appointment history
+

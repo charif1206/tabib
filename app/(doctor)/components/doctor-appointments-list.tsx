@@ -6,9 +6,17 @@ import { useState } from 'react';
 type TabType = 'requests' | 'bookings';
 
 async function getDoctorAppointments(type: TabType) {
-  const response = await fetch(`/api/doctor/appointments?type=${type}`, { cache: 'no-store' });
+  const response = await fetch(`/api/doctor/appointments?type=${type}`, {
+    cache: 'no-store',
+    credentials: 'include',
+  });
   if (!response.ok) {
-    throw new Error('تعذر تحميل المواعيد');
+    const data = await response.json().catch(() => ({ error: '' }));
+    if (response.status === 401 && typeof window !== 'undefined') {
+      window.location.href = '/doctor/login';
+      throw new Error('انتهت الجلسة. الرجاء تسجيل الدخول مرة اخرى.');
+    }
+    throw new Error(data.error || 'تعذر تحميل المواعيد');
   }
   return response.json() as Promise<{ appointments: Array<Record<string, unknown>> }>;
 }
@@ -34,9 +42,10 @@ export default function DoctorAppointmentsList({ type }: { type: TabType }) {
   const [action, setAction] = useState<'accept' | 'reject' | 'reschedule' | null>(null);
   const [newTime, setNewTime] = useState('');
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error } = useQuery({
     queryKey: ['doctorAppointments', type],
     queryFn: () => getDoctorAppointments(type),
+    retry: false,
   });
 
   const updateMutation = useMutation({
@@ -59,7 +68,9 @@ export default function DoctorAppointmentsList({ type }: { type: TabType }) {
 
       {isLoading && <p className="text-sm text-gray-500">جاري التحميل...</p>}
 
-      {!isLoading && (!data?.appointments || data.appointments.length === 0) && (
+      {isError && <p data-testid="doctor-appointments-error" className="text-sm text-red-700">{(error as Error).message}</p>}
+
+      {!isLoading && !isError && (!data?.appointments || data.appointments.length === 0) && (
         <p className="text-sm text-gray-500">لا توجد مواعيد حالياً.</p>
       )}
 
@@ -67,7 +78,7 @@ export default function DoctorAppointmentsList({ type }: { type: TabType }) {
         {data?.appointments?.map((appointment) => {
           const id = String(appointment.id ?? '');
           return (
-            <div key={id} className="border border-gray-100 rounded-lg p-4 text-right">
+            <div key={id} data-testid={`doctor-appointment-card-${id}`} className="border border-gray-100 rounded-lg p-4 text-right">
               <div className="flex items-start justify-between gap-2">
                 <button
                   onClick={() => setOpenId(id)}
