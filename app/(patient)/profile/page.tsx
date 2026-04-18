@@ -32,6 +32,7 @@ export default function PatientProfilePage() {
     setIsLoggingOut(true);
     try {
       await fetch('/api/auth/logout', { method: 'POST' });
+      queryClient.clear();
     } finally {
       router.replace('/login');
       router.refresh();
@@ -42,6 +43,8 @@ export default function PatientProfilePage() {
   const { data, isLoading, isError, error } = useQuery({
     queryKey: ['me'],
     queryFn: getMe,
+    staleTime: 0,
+    refetchOnMount: 'always',
   });
 
   const appointmentActionMutation = useMutation({

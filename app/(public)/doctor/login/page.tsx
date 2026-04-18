@@ -3,9 +3,11 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 
 export default function DoctorLoginPage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [formData, setFormData] = useState({ phone: '', password: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -24,6 +26,11 @@ export default function DoctorLoginPage() {
       const data = await res.json();
       
       if (res.ok) {
+        queryClient.removeQueries({ queryKey: ['me'] });
+        queryClient.removeQueries({ queryKey: ['doctorAppointments'] });
+        queryClient.removeQueries({ queryKey: ['doctorDashboard'] });
+        queryClient.removeQueries({ queryKey: ['doctor'] });
+        queryClient.removeQueries({ queryKey: ['doctors'] });
         router.push('/dashboard');
         router.refresh();
       } else {

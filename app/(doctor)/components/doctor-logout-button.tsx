@@ -3,9 +3,11 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { LogOut } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
 
 export default function DoctorLogoutButton() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   async function handleLogout() {
@@ -16,6 +18,7 @@ export default function DoctorLogoutButton() {
     setIsSubmitting(true);
     try {
       await fetch('/api/auth/logout', { method: 'POST' });
+      queryClient.clear();
     } finally {
       router.replace('/doctor/login');
       router.refresh();
