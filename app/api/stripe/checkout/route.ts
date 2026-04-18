@@ -79,7 +79,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ url: checkoutSession.url });
   } catch (error) {
     console.error(error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    const message = error instanceof Error ? error.message : 'Internal server error';
+    const status = message.includes('Stripe is not configured') ? 500 : 500;
+    return NextResponse.json({ error: message }, { status });
   }
 }
 

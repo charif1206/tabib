@@ -9,11 +9,11 @@ export function getStripeServer() {
 
   const secretKey = process.env.STRIPE_SECRET_KEY;
   if (!secretKey) {
-    throw new Error('Missing STRIPE_SECRET_KEY');
+    throw new Error('Stripe is not configured. Set STRIPE_SECRET_KEY in your .env file.');
   }
 
   stripeClient = new Stripe(secretKey, {
-    apiVersion: '2025-03-31.basil',
+    apiVersion: '2025-08-27.basil',
   });
 
   return stripeClient;

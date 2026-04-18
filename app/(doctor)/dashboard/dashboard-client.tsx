@@ -121,14 +121,19 @@ export default function DoctorDashboardClient() {
 
       {/* Tabs */}
       <div className="bg-white border border-gray-100 rounded-lg">
-        <div className="flex gap-0 border-b border-gray-100">
+        <div className="relative flex gap-0 border-b border-gray-100">
+          <div
+            className={`absolute bottom-0 right-0 h-0.5 w-1/2 bg-cyan-600 transition-transform duration-300 ease-out ${
+              activeTab === 'requests' ? 'translate-x-0' : '-translate-x-full'
+            }`}
+          />
           <button
             onClick={() => setActiveTab('requests')}
             data-testid="dashboard-tab-requests"
-            className={`flex-1 py-3 text-sm font-medium text-center border-b-2 ${
+            className={`relative z-10 flex-1 py-3 text-sm font-medium text-center transition-colors ${
               activeTab === 'requests'
-                ? 'border-cyan-600 text-cyan-700'
-                : 'border-transparent text-gray-600 hover:text-gray-800'
+                ? 'text-cyan-700'
+                : 'text-gray-600 hover:text-gray-800'
             }`}
           >
             الطلبات
@@ -136,10 +141,10 @@ export default function DoctorDashboardClient() {
           <button
             onClick={() => setActiveTab('bookings')}
             data-testid="dashboard-tab-bookings"
-            className={`flex-1 py-3 text-sm font-medium text-center border-b-2 ${
+            className={`relative z-10 flex-1 py-3 text-sm font-medium text-center transition-colors ${
               activeTab === 'bookings'
-                ? 'border-cyan-600 text-cyan-700'
-                : 'border-transparent text-gray-600 hover:text-gray-800'
+                ? 'text-cyan-700'
+                : 'text-gray-600 hover:text-gray-800'
             }`}
           >
             الحجوزات المؤكدة

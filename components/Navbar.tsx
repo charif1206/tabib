@@ -1,7 +1,14 @@
+"use client";
+
 import Link from 'next/link';
-import { Search, MapPin, Bell, User } from 'lucide-react';
+import { usePathname } from 'next/navigation';
+import { Bell, User } from 'lucide-react';
 
 export default function Navbar() {
+  const pathname = usePathname();
+  const isDoctorsActive = pathname === '/doctors' || pathname.startsWith('/doctor/');
+  const isAppointmentsActive = pathname === '/profile' || pathname.startsWith('/profile/');
+
   return (
     <nav className="bg-white border-b border-gray-100 flex items-center justify-between px-6 py-4 sticky top-0 z-50">
       <div className="flex items-center gap-8">
@@ -11,10 +18,23 @@ export default function Navbar() {
           </div>
           <span className="text-xl font-bold text-gray-800">Doc</span>
         </Link>
-        <div className="hidden md:flex items-center gap-6 text-gray-600 text-sm font-medium">
-          <Link href="/doctors" className="bg-gray-100 px-4 py-2 rounded-full text-gray-800">البحث عن أطباء</Link>
-          <Link href="/profile" className="hover:text-cyan-600">مواعيدي</Link>
-          <button className="hover:text-cyan-600">المفضلة</button>
+        <div className="hidden md:flex items-center gap-2 text-sm font-medium">
+          <Link
+            href="/doctors"
+            className={`px-4 py-2 rounded-full transition-all duration-200 ${
+              isDoctorsActive ? 'bg-gray-100 text-gray-800' : 'text-gray-600 hover:text-cyan-600'
+            }`}
+          >
+            البحث عن أطباء
+          </Link>
+          <Link
+            href="/profile"
+            className={`px-4 py-2 rounded-full transition-all duration-200 ${
+              isAppointmentsActive ? 'bg-gray-100 text-gray-800' : 'text-gray-600 hover:text-cyan-600'
+            }`}
+          >
+            مواعيدي
+          </Link>
         </div>
       </div>
       <div className="flex items-center gap-4">
